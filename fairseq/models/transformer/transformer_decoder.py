@@ -117,8 +117,8 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
             self.layers = nn.ModuleList([])
         self.layers.extend(
             [
-                self.build_decoder_layer(cfg, no_encoder_attn)
-                for _ in range(cfg.decoder.layers)
+                self.build_decoder_layer(cfg, no_encoder_attn, i=i)
+                for i in range(cfg.decoder.layers)
             ]
         )
         self.num_layers = len(self.layers)
@@ -171,8 +171,16 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
                 BaseLayer(cfg),
             )
 
-    def build_decoder_layer(self, cfg, no_encoder_attn=False):
-        layer = transformer_layer.TransformerDecoderLayerBase(cfg, no_encoder_attn)
+    def build_decoder_layer(self, cfg, no_encoder_attn=False, i=None):
+        if i is not None:
+            layer_idx = i + 1
+            if cfg.expert_interval > 0  and layer_idx % cfg.expert_interval == 0:
+                layer = transformer_layer.TransformerDecoderMoELayerBase(cfg, no_encoder_attn)
+            else:
+                layer = transformer_layer.TransformerDecoderLayerBase(cfg, no_encoder_attn)
+        else:
+            raise Exception("YYh Really?")
+            layer = transformer_layer.TransformerDecoderLayerBase(cfg, no_encoder_attn)
         checkpoint = cfg.checkpoint_activations
         if checkpoint:
             offload_to_cpu = cfg.offload_activations
@@ -290,6 +298,12 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
         if encoder_out is not None and len(encoder_out["encoder_padding_mask"]) > 0:
             padding_mask = encoder_out["encoder_padding_mask"][0]
 
+        moe_loss = 0.0
+        encoder_ep_want_num = 0.0
+        if encoder_out is not None:
+            moe_loss = encoder_out.get("moe_loss", 0.0)
+            encoder_ep_want_num = encoder_out.get("ep_want_num", 0.0)
+
         # embed positions
         positions = None
         if self.embed_positions is not None:
@@ -331,13 +345,16 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
         # decoder layers
         attn: Optional[Tensor] = None
         inner_states: List[Optional[Tensor]] = [x]
+
+        decoder_ep_want_num = 0.0
+        moe_layer_num = 0
         for idx, layer in enumerate(self.layers):
             if incremental_state is None and not full_context_alignment:
                 self_attn_mask = self.buffered_future_mask(x)
             else:
                 self_attn_mask = None
 
-            x, layer_attn, _ = layer(
+            lr = layer(
                 x,
                 enc,
                 padding_mask,
@@ -347,9 +364,24 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
                 need_attn=bool((idx == alignment_layer)),
                 need_head_weights=bool((idx == alignment_layer)),
             )
+
+            if len(lr) == 3:
+                x, layer_attn, _ = lr
+            elif len(lr) == 5:
+                x, layer_attn, _, this_moe_loss, gate_info = lr
+
+                moe_loss += this_moe_loss
+                moe_layer_num += 1
+                decoder_ep_want_num += gate_info.get("want_num", 0.0)
+            else:
+                raise Exception("yyh impossible")
+            
             inner_states.append(x)
             if layer_attn is not None and idx == alignment_layer:
                 attn = layer_attn.float().to(x)
+
+        if moe_layer_num == 0:
+            moe_layer_num = 1
 
         if attn is not None:
             if alignment_heads is not None:
@@ -367,7 +399,7 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
         if self.project_out_dim is not None:
             x = self.project_out_dim(x)
 
-        return x, {"attn": [attn], "inner_states": inner_states}
+        return x, {"attn": [attn], "inner_states": inner_states, "moe_loss": moe_loss, "ep_want_num": (encoder_ep_want_num + decoder_ep_want_num / moe_layer_num) / 2}
 
     def output_layer(self, features):
         """Project features to the vocabulary size."""

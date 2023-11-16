@@ -93,7 +93,7 @@ class TransformerEncoderBase(FairseqEncoder):
         else:
             self.layers = nn.ModuleList([])
         self.layers.extend(
-            [self.build_encoder_layer(cfg) for i in range(cfg.encoder.layers)]
+            [self.build_encoder_layer(cfg, i) for i in range(cfg.encoder.layers)]
         )
         self.num_layers = len(self.layers)
 
@@ -102,10 +102,16 @@ class TransformerEncoderBase(FairseqEncoder):
         else:
             self.layer_norm = None
 
-    def build_encoder_layer(self, cfg):
-        layer = transformer_layer.TransformerEncoderLayerBase(
-            cfg, return_fc=self.return_fc
-        )
+    def build_encoder_layer(self, cfg, i):
+        layer_idx = i + 1
+        if cfg.expert_interval > 0  and layer_idx % cfg.expert_interval == 0:
+            layer = transformer_layer.TransformerEncoderMoELayerBase(
+                cfg, return_fc=self.return_fc
+            )
+        else:
+            layer = transformer_layer.TransformerEncoderLayerBase(
+                cfg, return_fc=self.return_fc
+            )
         checkpoint = cfg.checkpoint_activations
         if checkpoint:
             offload_to_cpu = cfg.offload_activations
@@ -225,22 +231,45 @@ class TransformerEncoderBase(FairseqEncoder):
         if return_all_hiddens:
             encoder_states.append(x)
 
+        moe_loss = 0.0 # moe loss
+        moe_layer_num = 0
+        ep_want_num = 0.0
+
         # encoder layers
         for layer in self.layers:
             lr = layer(
                 x, encoder_padding_mask=encoder_padding_mask if has_pads else None
             )
 
-            if isinstance(lr, tuple) and len(lr) == 2:
-                x, fc_result = lr
+            if isinstance(layer, transformer_layer.TransformerEncoderMoELayerBase):
+                if isinstance(lr, tuple):
+                    if len(lr) == 3:
+                        x, l_aux, gate_info = lr
+                        fc_result = None
+                    elif len(lr) == 4:
+                        x, fc_result, l_aux, gate_info = lr
+                    else:
+                        raise Exception("YYH Impossible!")
+                else:
+                    raise Exception("Impossible!")
+
+                moe_loss += l_aux
+                ep_want_num += gate_info.get("want_num", 0.0)
+                moe_layer_num += 1
             else:
-                x = lr
-                fc_result = None
+                if isinstance(lr, tuple) and len(lr) == 2:
+                    x, fc_result = lr
+                else:
+                    x = lr
+                    fc_result = None
 
             if return_all_hiddens and not torch.jit.is_scripting():
                 assert encoder_states is not None
                 encoder_states.append(x)
                 fc_results.append(fc_result)
+
+        if moe_layer_num == 0:
+            moe_layer_num = 1
 
         if self.layer_norm is not None:
             x = self.layer_norm(x)
@@ -263,6 +292,8 @@ class TransformerEncoderBase(FairseqEncoder):
             "fc_results": fc_results,  # List[T x B x C]
             "src_tokens": [],
             "src_lengths": [src_lengths],
+            "moe_loss": moe_loss,
+            "ep_want_num": ep_want_num / moe_layer_num
         }
 
     @torch.jit.export

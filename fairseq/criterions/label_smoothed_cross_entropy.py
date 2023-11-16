@@ -78,6 +78,9 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         3) logging outputs to display while training
         """
         net_output = model(**sample["net_input"])
+        moe_loss = net_output[1].get("moe_loss", 0.0)
+        ep_want_num = net_output[1].get("ep_want_num", 0.0)
+
         loss, nll_loss = self.compute_loss(model, net_output, sample, reduce=reduce)
         sample_size = (
             sample["target"].size(0) if self.sentence_avg else sample["ntokens"]
@@ -88,12 +91,14 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
             "ntokens": sample["ntokens"],
             "nsentences": sample["target"].size(0),
             "sample_size": sample_size,
+            "moe_loss": 0.01 * moe_loss.data if isinstance(moe_loss, torch.Tensor) else moe_loss,
+            "ep_want_num": ep_want_num
         }
         if self.report_accuracy:
             n_correct, total = self.compute_accuracy(model, net_output, sample)
             logging_output["n_correct"] = utils.item(n_correct.data)
             logging_output["total"] = utils.item(total.data)
-        return loss, sample_size, logging_output
+        return loss + 0.01 * moe_loss, sample_size, logging_output
 
     def get_lprobs_and_target(self, model, net_output, sample):
         lprobs = model.get_normalized_probs(net_output, log_probs=True)
@@ -128,12 +133,20 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
     def reduce_metrics(cls, logging_outputs) -> None:
         """Aggregate logging outputs from data parallel training."""
         loss_sum = sum(log.get("loss", 0) for log in logging_outputs)
+        moe_loss_sum = sum(log.get("moe_loss", 0) for log in logging_outputs)
+        ep_want_num = sum(log.get("ep_want_num", 0) for log in logging_outputs)
         nll_loss_sum = sum(log.get("nll_loss", 0) for log in logging_outputs)
         ntokens = sum(log.get("ntokens", 0) for log in logging_outputs)
         sample_size = sum(log.get("sample_size", 0) for log in logging_outputs)
 
         metrics.log_scalar(
             "loss", loss_sum / sample_size / math.log(2), sample_size, round=3
+        )
+        metrics.log_scalar(
+            "moe_loss", moe_loss_sum / sample_size / math.log(2), sample_size, round=5, priority=999
+        )
+        metrics.log_scalar(
+            "ep_want_num", ep_want_num / len(logging_outputs), ntokens, round=2, priority=1000
         )
         metrics.log_scalar(
             "nll_loss", nll_loss_sum / ntokens / math.log(2), ntokens, round=3

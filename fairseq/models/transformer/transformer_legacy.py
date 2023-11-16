@@ -88,6 +88,36 @@ class TransformerModel(TransformerModelBase):
             parser, TransformerConfig(), delete_default=True, with_prefix=""
         )
 
+        # parser.add_argument(
+        #     '--num-experts', type=int, default=1,
+        #     help='number of experts',
+        # )
+
+        # parser.add_argument(
+        #     '--expert-interval', type=int, default=0,
+        #     help='interval',
+        # )
+
+        # parser.add_argument(
+        #     '--moe-k', type=int, default=1,
+        #     help='top-k',
+        # )
+
+        # parser.add_argument(
+        #     '--capacity-factor', type=int, default=1,
+        #     help='xxx',
+        # )
+
+        # parser.add_argument(
+        #     '--eval-capacity-factor', type=int, default=1,
+        #     help='xxx',
+        # )
+
+        # parser.add_argument(
+        #     '--threshold', type=float, default=0.9,
+        #     help='xx',
+        # )
+
     @classmethod
     def build_model(cls, args, task):
         """Build a new model instance."""
@@ -233,6 +263,41 @@ def transformer_iwslt_de_en(args):
     args.decoder_ffn_embed_dim = getattr(args, "decoder_ffn_embed_dim", 1024)
     args.decoder_attention_heads = getattr(args, "decoder_attention_heads", 4)
     args.decoder_layers = getattr(args, "decoder_layers", 6)
+    base_architecture(args)
+
+
+@register_model_architecture("transformer", "transformer_moe_iwslt_de_en")
+def transformer_moe_iwslt_de_en(args):
+    args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 512)
+    args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 1024)
+    args.encoder_attention_heads = getattr(args, "encoder_attention_heads", 4)
+    args.encoder_layers = getattr(args, "encoder_layers", 6)
+    args.decoder_embed_dim = getattr(args, "decoder_embed_dim", 512)
+    args.decoder_ffn_embed_dim = getattr(args, "decoder_ffn_embed_dim", 1024)
+    args.decoder_attention_heads = getattr(args, "decoder_attention_heads", 4)
+    args.decoder_layers = getattr(args, "decoder_layers", 6)
+
+    args.moe_type = getattr(args, "moe_type", "threshold")
+    args.expert_interval = getattr(args, "expert_interval", 2)
+    args.num_experts = getattr(args, "num_experts", 4)
+    args.moe_k = getattr(args, "moe_k", 1)
+    args.capacity_factor = getattr(args, "capacity_factor", 1)
+    args.eval_capacity_factor = getattr(args, "eval_capacity_factor", 1)
+    args.threshold = getattr(args, "threshold", 0.90)
+    
+    base_architecture(args)
+
+
+@register_model_architecture("transformer", "transformer_moe_ep4_top1_cf1_ecf1")
+def transformer_wmt_en_de(args):
+    args.moe_type = getattr(args, "moe_type", "threshold")
+    args.expert_interval = getattr(args, "expert_interval", 2)
+    args.num_experts = getattr(args, "num_experts", 4)
+    args.moe_k = getattr(args, "moe_k", 1)
+    args.capacity_factor = getattr(args, "capacity_factor", 1)
+    args.eval_capacity_factor = getattr(args, "eval_capacity_factor", 1)
+    args.threshold = getattr(args, "threshold", 0.90)
+
     base_architecture(args)
 
 

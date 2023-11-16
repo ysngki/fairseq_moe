@@ -237,6 +237,41 @@ class TransformerConfig(FairseqDataclass):
         metadata={"help": "don't add an extra layernorm after the last decoder block"},
     )
 
+    #### my moe related
+    num_experts: Optional[int] = field(
+        default=1,
+        metadata={"help": "number of experts"},
+    )
+
+    expert_interval: Optional[int] = field(
+        default=0,
+        metadata={"help": "interval, 0 means turnoff my moe"},
+    )
+
+    moe_k: Optional[int] = field(
+        default=1,
+        metadata={"help": "top-k"},
+    )
+
+    capacity_factor: Optional[int] = field(
+        default=1,
+        metadata={"help": "..."},
+    )
+
+    eval_capacity_factor: Optional[int] = field(
+        default=1,
+        metadata={"help": "..."},
+    )
+
+    threshold: float = field(
+        default=0.0,
+        metadata={"help": "my flexible router"},
+    )
+
+    moe_type: Optional[str] = field(
+        default='threshold', metadata={"help": "what MoE layer to use, can be base, topk, threshold"}
+    )
+
     # We need to make this hierarchical dataclass like the flat namespace
     # __getattr__ and __setattr__ here allow backward compatibility
     # for subclasses of Transformer(Legacy) that depend on read/write on
