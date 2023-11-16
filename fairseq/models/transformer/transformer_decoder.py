@@ -487,6 +487,7 @@ class TransformerDecoder(TransformerDecoderBase):
         output_projection=None,
     ):
         self.args = args
+        raise Exception("!!!!")
         super().__init__(
             TransformerConfig.from_namespace(args),
             dictionary,

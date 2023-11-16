@@ -379,6 +379,7 @@ class TransformerEncoderBase(FairseqEncoder):
 
 class TransformerEncoder(TransformerEncoderBase):
     def __init__(self, args, dictionary, embed_tokens, return_fc=False):
+        raise Exception("!!!!")
         self.args = args
         super().__init__(
             TransformerConfig.from_namespace(args),

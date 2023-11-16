@@ -815,6 +815,7 @@ class TransformerDecoderMoELayerBase(nn.Module):
         self, cfg, no_encoder_attn=False, add_bias_kv=False, add_zero_attn=False
     ):
         super().__init__()
+        self.cfg = cfg
         self.embed_dim = cfg.decoder.embed_dim
         self.dropout_module = FairseqDropout(
             cfg.dropout, module_name=self.__class__.__name__
@@ -919,7 +920,8 @@ class TransformerDecoderMoELayerBase(nn.Module):
                                                         None,
                                                         in_logits=None,
                                                         now_training_process=None,
-                                                        gating_function=None)
+                                                        gating_function=None,
+                                                        moe_type=self.cfg.moe_type)
         
         expert_output, non_zero_ratio = self.experts(reshaped_input, combine_weights, top_idx)
 
