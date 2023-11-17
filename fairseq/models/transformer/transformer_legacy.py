@@ -301,6 +301,19 @@ def transformer_moe_ep4_top1_cf1_ecf1(args):
     base_architecture(args)
 
 
+@register_model_architecture("transformer", "transformer_moe_ep12_int6_top1_cf1_ecf1")
+def transformer_moe_ep4_top1_cf1_ecf1(args):
+    args.moe_type = getattr(args, "moe_type", "topk")
+    args.moe_k = getattr(args, "moe_k", 1)
+    args.threshold = getattr(args, "threshold", 0.90)
+    args.expert_interval = getattr(args, "expert_interval", 6)
+    args.num_experts = getattr(args, "num_experts", 12)
+    args.capacity_factor = getattr(args, "capacity_factor", 1)
+    args.eval_capacity_factor = getattr(args, "eval_capacity_factor", 1)
+
+    base_architecture(args)
+
+
 @register_model_architecture("transformer", "transformer_wmt_en_de")
 def transformer_wmt_en_de(args):
     base_architecture(args)
