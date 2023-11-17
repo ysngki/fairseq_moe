@@ -6,7 +6,7 @@ from torch import Tensor
 import torch.nn.functional as F
 
 import copy
-
+import numpy as np
 
 @torch.jit.script
 def _capacity(gates: Tensor, capacity_factor: Tensor, min_capacity: Tensor) -> Tensor:
@@ -260,6 +260,10 @@ def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: 
 	num_experts = int(gates.shape[1])
 	mask1 = F.one_hot(indices1_s, num_classes=num_experts)
 
+	# calculat coefficient of variation from M6-T: Exploring Sparse Expert Models and Beyond
+	top1_expert_received = mask1.sum(dim=0)
+	balance_coe = np.std(top1_expert_received.cpu().numpy()) / (gates.shape[0] / gates.shape[1])
+	
 	# gating decisions (no use)
 	exp_counts = torch.sum(mask1, dim=0).detach().to('cpu')
 
@@ -314,7 +318,9 @@ def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: 
 		"chosen_num": avg_valid_chosen_num,
 		"token_not_full_ratio": token_not_full_ratio,
 		"expert_not_full_ratio": expert_not_full_ratio,
-		"receive_ratio": receive_ratio
+		"receive_ratio": receive_ratio,
+		"want_num": in_k,
+		"balance_coe": balance_coe
 	}
 	return l_aux, combine_weights, dispatch_mask, exp_counts, gate_info, top_idx
 
@@ -383,6 +389,10 @@ def main_thresholdGating_prob_priority(logits: Tensor, capacity_factor: float, m
 	num_experts = int(gates.shape[1])
 	mask1 = F.one_hot(indices1_s, num_classes=num_experts)
 
+	# calculat coefficient of variation from M6-T: Exploring Sparse Expert Models and Beyond
+	top1_expert_received = mask1.sum(dim=0)
+	balance_coe = np.std(top1_expert_received.cpu().numpy()) / (gates.shape[0] / gates.shape[1])
+	
 	# gating decisions (no use)
 	exp_counts = torch.sum(mask1, dim=0).detach().to('cpu')
 
@@ -466,7 +476,8 @@ def main_thresholdGating_prob_priority(logits: Tensor, capacity_factor: float, m
 		"token_not_full_ratio": token_not_full_ratio,
 		"expert_not_full_ratio": expert_not_full_ratio,
 		"want_num": avg_want_num,
-		"receive_ratio": receive_ratio
+		"receive_ratio": receive_ratio,
+		"balance_coe": balance_coe
 	}
 	return l_aux, combine_weights, dispatch_mask, exp_counts, gate_info, top_idx
 

@@ -1,3 +1,4 @@
+# wmt23-uken-moe_ep4_top1_cf1_ecf1
 CUDA_VISIBLE_DEVICES=0 fairseq-train /data/yuanhang/wmt23/wmt23-uken-fairseq \
 --arch transformer_moe_ep4_top1_cf1_ecf1 --share-decoder-input-output-embed \
 --optimizer adam --adam-betas '(0.9, 0.98)' \

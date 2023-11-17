@@ -28,6 +28,10 @@ class LabelSmoothedCrossEntropyCriterionConfig(FairseqDataclass):
         default=0,
         metadata={"help": "Ignore first N tokens"},
     )
+    moe_loss_coeff: float = field(
+        default=0.01,
+        metadata={"help": "..."},
+    )
     sentence_avg: bool = II("optimization.sentence_avg")
 
 
@@ -62,12 +66,14 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         label_smoothing,
         ignore_prefix_size=0,
         report_accuracy=False,
+        moe_loss_coeff=0.01,
     ):
         super().__init__(task)
         self.sentence_avg = sentence_avg
         self.eps = label_smoothing
         self.ignore_prefix_size = ignore_prefix_size
         self.report_accuracy = report_accuracy
+        self.moe_loss_coeff = moe_loss_coeff
 
     def forward(self, model, sample, reduce=True):
         """Compute the loss for the given sample.
@@ -80,25 +86,29 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         net_output = model(**sample["net_input"])
         moe_loss = net_output[1].get("moe_loss", 0.0)
         ep_want_num = net_output[1].get("ep_want_num", 0.0)
+        balance_coe = net_output[1].get("balance_coe", 0.0)
 
         loss, nll_loss = self.compute_loss(model, net_output, sample, reduce=reduce)
         sample_size = (
             sample["target"].size(0) if self.sentence_avg else sample["ntokens"]
         )
+        moe_loss = moe_loss * sample_size * self.moe_loss_coeff
+
         logging_output = {
             "loss": loss.data,
             "nll_loss": nll_loss.data,
             "ntokens": sample["ntokens"],
             "nsentences": sample["target"].size(0),
             "sample_size": sample_size,
-            "moe_loss": 0.01 * moe_loss.data if isinstance(moe_loss, torch.Tensor) else moe_loss,
-            "ep_want_num": ep_want_num
+            "moe_loss": moe_loss.data if isinstance(moe_loss, torch.Tensor) else moe_loss,
+            "ep_want_num": ep_want_num,
+            "balance_coe": balance_coe,
         }
         if self.report_accuracy:
             n_correct, total = self.compute_accuracy(model, net_output, sample)
             logging_output["n_correct"] = utils.item(n_correct.data)
             logging_output["total"] = utils.item(total.data)
-        return loss + 0.01 * moe_loss, sample_size, logging_output
+        return loss + moe_loss, sample_size, logging_output
 
     def get_lprobs_and_target(self, model, net_output, sample):
         lprobs = model.get_normalized_probs(net_output, log_probs=True)
@@ -135,6 +145,7 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         loss_sum = sum(log.get("loss", 0) for log in logging_outputs)
         moe_loss_sum = sum(log.get("moe_loss", 0) for log in logging_outputs)
         ep_want_num = sum(log.get("ep_want_num", 0) for log in logging_outputs)
+        balance_coe = sum(log.get("balance_coe", 0) for log in logging_outputs)
         nll_loss_sum = sum(log.get("nll_loss", 0) for log in logging_outputs)
         ntokens = sum(log.get("ntokens", 0) for log in logging_outputs)
         sample_size = sum(log.get("sample_size", 0) for log in logging_outputs)
@@ -147,6 +158,9 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         )
         metrics.log_scalar(
             "ep_want_num", ep_want_num / len(logging_outputs), ntokens, round=2, priority=1000
+        )
+        metrics.log_scalar(
+            "balance_coe", balance_coe / len(logging_outputs), ntokens, round=2, priority=1000
         )
         metrics.log_scalar(
             "nll_loss", nll_loss_sum / ntokens / math.log(2), ntokens, round=3

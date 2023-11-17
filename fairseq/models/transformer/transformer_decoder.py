@@ -300,9 +300,11 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
 
         moe_loss = 0.0
         encoder_ep_want_num = 0.0
+        encoder_balance_coe = 0.0
         if encoder_out is not None:
             moe_loss = encoder_out.get("moe_loss", 0.0)
             encoder_ep_want_num = encoder_out.get("ep_want_num", 0.0)
+            encoder_balance_coe = encoder_out.get("balance_coe", 0.0)
 
         # embed positions
         positions = None
@@ -347,6 +349,7 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
         inner_states: List[Optional[Tensor]] = [x]
 
         decoder_ep_want_num = 0.0
+        decoder_balance_coe = 0.0
         moe_layer_num = 0
         for idx, layer in enumerate(self.layers):
             if incremental_state is None and not full_context_alignment:
@@ -373,6 +376,7 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
                 moe_loss += this_moe_loss
                 moe_layer_num += 1
                 decoder_ep_want_num += gate_info.get("want_num", 0.0)
+                decoder_balance_coe += gate_info.get("balance_coe", 0.0)
             else:
                 raise Exception("yyh impossible")
             
@@ -399,7 +403,9 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
         if self.project_out_dim is not None:
             x = self.project_out_dim(x)
 
-        return x, {"attn": [attn], "inner_states": inner_states, "moe_loss": moe_loss, "ep_want_num": (encoder_ep_want_num + decoder_ep_want_num / moe_layer_num) / 2}
+        balance_coe = ((decoder_balance_coe / moe_layer_num) + encoder_balance_coe) / 2
+        ep_want_num = (encoder_ep_want_num + decoder_ep_want_num / moe_layer_num) / 2
+        return x, {"attn": [attn], "inner_states": inner_states, "moe_loss": moe_loss, "ep_want_num": ep_want_num, "balance_coe": balance_coe}
 
     def output_layer(self, features):
         """Project features to the vocabulary size."""
