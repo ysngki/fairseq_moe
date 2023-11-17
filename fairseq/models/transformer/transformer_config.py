@@ -253,6 +253,11 @@ class TransformerConfig(FairseqDataclass):
         metadata={"help": "top-k"},
     )
 
+    ffn_split_ratio: Optional[int] = field(
+        default=1,
+        metadata={"help": "how many small FFNs to split, I have to increase num_experts manually"},
+    )
+
     capacity_factor: Optional[int] = field(
         default=1,
         metadata={"help": "..."},

@@ -236,13 +236,13 @@ class MLPLayer(nn.Module):
 
         self.fc1 = self.build_fc1(
             self.embed_dim,
-            cfg.encoder.ffn_embed_dim,
+            cfg.encoder.ffn_embed_dim // cfg.ffn_split_ratio,
             self.quant_noise,
             self.quant_noise_block_size,
         )
 
         self.fc2 = self.build_fc2(
-            cfg.encoder.ffn_embed_dim,
+            cfg.encoder.ffn_embed_dim // cfg.ffn_split_ratio,
             self.embed_dim,
             self.quant_noise,
             self.quant_noise_block_size,
@@ -747,13 +747,13 @@ class DecoderMLPLayer(nn.Module):
 
         self.fc1 = self.build_fc1(
             self.embed_dim,
-            cfg.decoder.ffn_embed_dim,
+            cfg.decoder.ffn_embed_dim // cfg.ffn_split_ratio,
             self.quant_noise,
             self.quant_noise_block_size,
         )
 
         self.fc2 = self.build_fc2(
-            cfg.decoder.ffn_embed_dim,
+            cfg.decoder.ffn_embed_dim // cfg.ffn_split_ratio,
             self.embed_dim,
             self.quant_noise,
             self.quant_noise_block_size,
@@ -769,7 +769,7 @@ class DecoderMLPLayer(nn.Module):
         )
 
         self.ffn_layernorm = (
-            LayerNorm(cfg.decoder.ffn_embed_dim)
+            LayerNorm(cfg.decoder.ffn_embed_dim // cfg.ffn_split_ratio)
             if utils.safe_getattr(cfg, "scale_fc", False)
             else None
         )
