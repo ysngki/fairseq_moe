@@ -280,11 +280,12 @@ def transformer_moe_iwslt_de_en(args):
     args.moe_type = getattr(args, "moe_type", "threshold")
     args.expert_interval = getattr(args, "expert_interval", 2)
     args.num_experts = getattr(args, "num_experts", 4)
+    args.ffn_split_ratio = getattr(args, "ffn_split_ratio", 1)
     args.moe_k = getattr(args, "moe_k", 1)
     args.capacity_factor = getattr(args, "capacity_factor", 1)
     args.eval_capacity_factor = getattr(args, "eval_capacity_factor", 1)
     args.threshold = getattr(args, "threshold", 0.90)
-    
+
     base_architecture(args)
 
 
@@ -293,6 +294,7 @@ def transformer_moe_ep4_top1_cf1_ecf1(args):
     args.moe_type = getattr(args, "moe_type", "topk")
     args.expert_interval = getattr(args, "expert_interval", 2)
     args.num_experts = getattr(args, "num_experts", 4)
+    args.ffn_split_ratio = getattr(args, "ffn_split_ratio", 1)
     args.moe_k = getattr(args, "moe_k", 1)
     args.capacity_factor = getattr(args, "capacity_factor", 1)
     args.eval_capacity_factor = getattr(args, "eval_capacity_factor", 1)
@@ -301,13 +303,28 @@ def transformer_moe_ep4_top1_cf1_ecf1(args):
     base_architecture(args)
 
 
+@register_model_architecture("transformer", "transformer_moe_ep8_top2_cf2_ecf2")
+def transformer_moe_ep8_top2_cf2_ecf2(args):
+    args.moe_type = getattr(args, "moe_type", "topk")
+    args.expert_interval = getattr(args, "expert_interval", 2)
+    args.num_experts = getattr(args, "num_experts", 8)
+    args.ffn_split_ratio = getattr(args, "ffn_split_ratio", 2)
+    args.moe_k = getattr(args, "moe_k", 2)
+    args.capacity_factor = getattr(args, "capacity_factor", 2)
+    args.eval_capacity_factor = getattr(args, "eval_capacity_factor", 2)
+    args.threshold = getattr(args, "threshold", 0.90)
+
+    base_architecture(args)
+
+
 @register_model_architecture("transformer", "transformer_moe_ep12_int6_top1_cf1_ecf1")
-def transformer_moe_ep4_top1_cf1_ecf1(args):
+def transformer_moe_ep12_int6_top1_cf1_ecf1(args):
     args.moe_type = getattr(args, "moe_type", "topk")
     args.moe_k = getattr(args, "moe_k", 1)
     args.threshold = getattr(args, "threshold", 0.90)
     args.expert_interval = getattr(args, "expert_interval", 6)
     args.num_experts = getattr(args, "num_experts", 12)
+    args.ffn_split_ratio = getattr(args, "ffn_split_ratio", 1)
     args.capacity_factor = getattr(args, "capacity_factor", 1)
     args.eval_capacity_factor = getattr(args, "eval_capacity_factor", 1)
 
