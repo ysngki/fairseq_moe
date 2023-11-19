@@ -104,7 +104,7 @@ class TransformerEncoderBase(FairseqEncoder):
 
     def build_encoder_layer(self, cfg, i):
         layer_idx = i + 1
-        if cfg.expert_interval > 0  and layer_idx % cfg.expert_interval == 0:
+        if cfg.expert_interval > 0  and layer_idx % cfg.expert_interval == 0 and (not cfg.no_encoder_moe):
             layer = transformer_layer.TransformerEncoderMoELayerBase(
                 cfg, return_fc=self.return_fc
             )

@@ -174,7 +174,7 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
     def build_decoder_layer(self, cfg, no_encoder_attn=False, i=None):
         if i is not None:
             layer_idx = i + 1
-            if cfg.expert_interval > 0  and layer_idx % cfg.expert_interval == 0:
+            if cfg.expert_interval > 0  and layer_idx % cfg.expert_interval == 0 and (not cfg.no_decoder_moe):
                 layer = transformer_layer.TransformerDecoderMoELayerBase(cfg, no_encoder_attn)
             else:
                 layer = transformer_layer.TransformerDecoderLayerBase(cfg, no_encoder_attn)
@@ -384,9 +384,6 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
             if layer_attn is not None and idx == alignment_layer:
                 attn = layer_attn.float().to(x)
 
-        if moe_layer_num == 0:
-            moe_layer_num = 1
-
         if attn is not None:
             if alignment_heads is not None:
                 attn = attn[:alignment_heads]
@@ -403,8 +400,13 @@ class TransformerDecoderBase(FairseqIncrementalDecoder):
         if self.project_out_dim is not None:
             x = self.project_out_dim(x)
 
-        balance_coe = ((decoder_balance_coe / moe_layer_num) + encoder_balance_coe) / 2
-        ep_want_num = (encoder_ep_want_num + decoder_ep_want_num / moe_layer_num) / 2
+        if moe_layer_num > 0:
+            balance_coe = ((decoder_balance_coe / moe_layer_num) + encoder_balance_coe) / 2
+            ep_want_num = (encoder_ep_want_num + decoder_ep_want_num / moe_layer_num) / 2
+        else:
+            balance_coe = encoder_balance_coe
+            ep_want_num = encoder_ep_want_num
+    
         return x, {"attn": [attn], "inner_states": inner_states, "moe_loss": moe_loss, "ep_want_num": ep_want_num, "balance_coe": balance_coe}
 
     def output_layer(self, features):

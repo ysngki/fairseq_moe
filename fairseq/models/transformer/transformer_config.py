@@ -277,6 +277,14 @@ class TransformerConfig(FairseqDataclass):
         default='threshold', metadata={"help": "what MoE layer to use, can be base, topk, threshold"}
     )
 
+    no_decoder_moe: bool = field(
+        default=False, metadata={"help": "if set, moe layer is not in decoder"}
+    )
+
+    no_encoder_moe: bool = field(
+        default=False, metadata={"help": "if set, moe layer is not in encoder"}
+    )
+
     # We need to make this hierarchical dataclass like the flat namespace
     # __getattr__ and __setattr__ here allow backward compatibility
     # for subclasses of Transformer(Legacy) that depend on read/write on
