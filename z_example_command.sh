@@ -1,6 +1,5 @@
-# wmt23-uken-moe_ep4_top1_cf1_ecf1
-CUDA_VISIBLE_DEVICES=0 fairseq-train /data/yuanhang/wmt23/wmt23-uken-fairseq \
---arch transformer_moe_ep4_top1_cf1_ecf1 --share-decoder-input-output-embed \
+CUDA_VISIBLE_DEVICES=1 fairseq-train /data/yuanhangyang/wmt23/wmt23-zhen-fairseq \
+--arch transformer_wmt_en_de --share-decoder-input-output-embed \
 --optimizer adam --adam-betas '(0.9, 0.98)' \
 --clip-norm 0.0 --lr 5e-4 --lr-scheduler inverse_sqrt \
 --warmup-updates 512 --dropout 0.3 --weight-decay 0.0001 \
@@ -12,7 +11,7 @@ CUDA_VISIBLE_DEVICES=0 fairseq-train /data/yuanhang/wmt23/wmt23-uken-fairseq \
 --max-target-positions 256 \
 --max-epoch 20 \
 --save-interval-updates 100 \
---keep-interval-updates -1 \
+--keep-interval-updates 5 \
 --no-epoch-checkpoints \
 --amp \
 --eval-bleu \
@@ -24,7 +23,6 @@ CUDA_VISIBLE_DEVICES=0 fairseq-train /data/yuanhang/wmt23/wmt23-uken-fairseq \
 --maximize-best-checkpoint-metric \
 --find-unused-parameters \
 --log-interval 1 \
---wandb-project translation \
---save-dir checkpoints/wmt23-uken-moe_ep4_top1_cf1_ecf1/ |& tee logs/wmt23-uken-moe_ep4_top1_cf1_ecf1.log
-
-
+--wandb-project translation_zhen \
+--skip-invalid-size-inputs-valid-test \
+--save-dir checkpoints/wmt23-zhen-base/ |& tee -a logs/wmt23-zhen-base.log
