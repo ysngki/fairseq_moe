@@ -103,6 +103,7 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
             "moe_loss": moe_loss.data if isinstance(moe_loss, torch.Tensor) else moe_loss,
             "ep_want_num": ep_want_num,
             "balance_coe": balance_coe,
+            "step_indicator": 1.0,
         }
         if self.report_accuracy:
             n_correct, total = self.compute_accuracy(model, net_output, sample)
@@ -149,6 +150,7 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         nll_loss_sum = sum(log.get("nll_loss", 0) for log in logging_outputs)
         ntokens = sum(log.get("ntokens", 0) for log in logging_outputs)
         sample_size = sum(log.get("sample_size", 0) for log in logging_outputs)
+        step_indicator = sum(log.get("step_indicator", 0) for log in logging_outputs) # if only one device, this is 1.0
 
         metrics.log_scalar(
             "loss", loss_sum / sample_size / math.log(2), sample_size, round=3
@@ -157,10 +159,10 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
             "moe_loss", moe_loss_sum / sample_size / math.log(2), sample_size, round=5, priority=999
         )
         metrics.log_scalar(
-            "ep_want_num", ep_want_num / len(logging_outputs), ntokens, round=2, priority=1000
+            "ep_want_num", ep_want_num / step_indicator, ntokens, round=2, priority=1000
         )
         metrics.log_scalar(
-            "balance_coe", balance_coe / len(logging_outputs), ntokens, round=2, priority=1000
+            "balance_coe", balance_coe / step_indicator, ntokens, round=2, priority=1000
         )
         metrics.log_scalar(
             "nll_loss", nll_loss_sum / ntokens / math.log(2), ntokens, round=3
