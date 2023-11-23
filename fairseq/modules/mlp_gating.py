@@ -253,6 +253,7 @@ def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: 
 	gates = F.softmax(logits, dim=1)
 	top1_p, _ = torch.max(gates, dim=1)
 
+	min_capacity = min(min_capacity, gates.shape[0])
 	capacity = _capacity(gates, torch.tensor(capacity_factor), torch.tensor(min_capacity))
 
 	# Create a mask for 1st's expert per token
