@@ -714,7 +714,7 @@ class TopKGate(torch.nn.Module):
 			# 						 placeholder_expert=self.placeholder_expert)
 
 			gate_output = topkgating(logits, self.capacity_factor if self.training else self.eval_capacity_factor,
-									 self.min_capacity, self.k)
+									 self.min_capacity, self.k, drop_tokens=self.drop_tokens)
 
 		elif moe_type == 'threshold':
 			if self.placeholder_expert:

@@ -308,7 +308,7 @@ class TransformerEncoderMoELayerBase(nn.Module):
 
         self.experts = Experts(MLPLayer(cfg), cfg.num_experts)
         self.gate = TopKGate(self.embed_dim, cfg.num_experts, cfg.moe_k, cfg.capacity_factor, cfg.eval_capacity_factor,
-                               4, True, True, threshold=cfg.threshold,
+                               4, True, drop_tokens=True, threshold=cfg.threshold,
                                placeholder_expert=False, view_num=1,
                                num_local_experts=cfg.num_experts, scale_moe=False)
 
@@ -874,7 +874,7 @@ class TransformerDecoderMoELayerBase(nn.Module):
 
         self.experts = Experts(DecoderMLPLayer(cfg), cfg.num_experts)
         self.gate = TopKGate(self.embed_dim, cfg.num_experts, cfg.moe_k, cfg.capacity_factor, cfg.eval_capacity_factor,
-                               4, True, True, threshold=cfg.threshold,
+                               4, True, drop_tokens=True, threshold=cfg.threshold,
                                placeholder_expert=False, view_num=1,
                                num_local_experts=cfg.num_experts, scale_moe=False)
 
