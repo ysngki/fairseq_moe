@@ -235,6 +235,7 @@ class TransformerEncoderBase(FairseqEncoder):
         moe_layer_num = 0
         ep_want_num = 0.0
         balance_coe = 0.0
+        drop_rate = 0.0
 
         # encoder layers
         for layer in self.layers:
@@ -257,6 +258,7 @@ class TransformerEncoderBase(FairseqEncoder):
                 moe_loss += l_aux
                 ep_want_num += gate_info.get("want_num", 0.0)
                 balance_coe += gate_info.get("balance_coe", 0.0)
+                drop_rate += gate_info.get("drop_rate")
                 moe_layer_num += 1
             else:
                 if isinstance(lr, tuple) and len(lr) == 2:
@@ -272,6 +274,7 @@ class TransformerEncoderBase(FairseqEncoder):
 
         if moe_layer_num == 0:
             moe_layer_num = 1
+            drop_rate = -1.0
 
         if self.layer_norm is not None:
             x = self.layer_norm(x)
@@ -296,7 +299,8 @@ class TransformerEncoderBase(FairseqEncoder):
             "src_lengths": [src_lengths],
             "moe_loss": moe_loss,
             "ep_want_num": ep_want_num / moe_layer_num,
-            "balance_coe": balance_coe / moe_layer_num
+            "balance_coe": balance_coe / moe_layer_num,
+            "encoder_drop_rate": drop_rate / moe_layer_num,
         }
 
     @torch.jit.export

@@ -247,7 +247,7 @@ def top1gating(logits: Tensor,
 	return l_aux, combine_weights, dispatch_mask, exp_counts, gate_info, top_idx
 
 
-def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: int) -> Tuple[
+def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: int, drop_tokens=True) -> Tuple[
 	Tensor, Tensor, Tensor, Tensor]:
 	# everything is in fp32 in this function
 	gates = F.softmax(logits, dim=1)
@@ -290,6 +290,11 @@ def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: 
 	expert_received_num = (tensor_all_mask > 0).sum(dim=0)
 	receive_ratio = expert_received_num * 100 / token_num
 
+	# if we don't want to drop any tokens
+	if not drop_tokens:
+		new_capacity = torch.max(expert_received_num).to(logits.device)
+		capacity = new_capacity
+
 	top_idx = _top_idx(tensor_all_mask, capacity)  # (capacity, expert num)
 	new_mask1 = tensor_all_mask * torch.zeros_like(tensor_all_mask).scatter_(0, top_idx, 1)
 	tensor_all_mask = (new_mask1 > 0).int()
@@ -314,6 +319,8 @@ def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: 
 	combine_weights = tensor_all_gates
 	dispatch_mask = None  # no used actually
 
+	top1_drop_rate = 100 - ((mask1 * tensor_all_mask).sum() * 100 / token_num)
+
 	gate_info = {
 		"top1_p": top1_p,
 		"chosen_num": avg_valid_chosen_num,
@@ -321,7 +328,8 @@ def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: 
 		"expert_not_full_ratio": expert_not_full_ratio,
 		"receive_ratio": receive_ratio,
 		"want_num": in_k,
-		"balance_coe": balance_coe
+		"balance_coe": balance_coe,
+		"drop_rate": top1_drop_rate,
 	}
 	return l_aux, combine_weights, dispatch_mask, exp_counts, gate_info, top_idx
 
@@ -367,6 +375,7 @@ def baselayer_gating(logits: Tensor, capacity_factor: float, min_capacity: int, 
 
 	gate_info = {
 		"top1_p": top1_p,
+		"drop_rate": 0.0,
 	}
 
 	return torch.tensor(0.0, device=logits.device, dtype=logits.dtype), combine_weights, None, None, gate_info, top_idx
@@ -589,6 +598,8 @@ def main_thresholdGating(logits: Tensor, capacity_factor: float, min_capacity: i
 	# dispatch_mask = combine_weights.bool() # no used actually
 	dispatch_mask = None  # no used actually
 
+	top1_drop_rate = 100 - ((mask1 * tensor_all_mask).sum() * 100 / token_num)
+	
 	gate_info = {
 		"top1_p": top1_p,
 		"chosen_num": avg_valid_chosen_num,
@@ -597,6 +608,7 @@ def main_thresholdGating(logits: Tensor, capacity_factor: float, min_capacity: i
 		"want_num": avg_want_num,
 		"receive_ratio": receive_ratio,
 		"balance_coe": balance_coe,
+		"drop_rate": top1_drop_rate,
 	}
 	return l_aux, combine_weights, dispatch_mask, exp_counts, gate_info, top_idx
 

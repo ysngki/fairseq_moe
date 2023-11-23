@@ -87,6 +87,8 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         moe_loss = net_output[1].get("moe_loss", 0.0)
         ep_want_num = net_output[1].get("ep_want_num", 0.0)
         balance_coe = net_output[1].get("balance_coe", 0.0)
+        encoder_drop_rate = net_output[1].get("encoder_drop_rate", 0.0)
+        decoder_drop_rate = net_output[1].get("decoder_drop_rate", 0.0)
 
         loss, nll_loss = self.compute_loss(model, net_output, sample, reduce=reduce)
         sample_size = (
@@ -103,6 +105,8 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
             "moe_loss": moe_loss.data if isinstance(moe_loss, torch.Tensor) else moe_loss,
             "ep_want_num": ep_want_num,
             "balance_coe": balance_coe,
+            "encoder_drop_rate": encoder_drop_rate,
+            "decoder_drop_rate": decoder_drop_rate,
             "step_indicator": 1.0,
         }
         if self.report_accuracy:
@@ -147,6 +151,8 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         moe_loss_sum = sum(log.get("moe_loss", 0) for log in logging_outputs)
         ep_want_num = sum(log.get("ep_want_num", 0) for log in logging_outputs)
         balance_coe = sum(log.get("balance_coe", 0) for log in logging_outputs)
+        encoder_drop_rate = sum(log.get("encoder_drop_rate", 0) for log in logging_outputs)
+        decoder_drop_rate = sum(log.get("decoder_drop_rate", 0) for log in logging_outputs)
         nll_loss_sum = sum(log.get("nll_loss", 0) for log in logging_outputs)
         ntokens = sum(log.get("ntokens", 0) for log in logging_outputs)
         sample_size = sum(log.get("sample_size", 0) for log in logging_outputs)
@@ -163,6 +169,12 @@ class LabelSmoothedCrossEntropyCriterion(FairseqCriterion):
         )
         metrics.log_scalar(
             "balance_coe", balance_coe / step_indicator, ntokens, round=2, priority=1000
+        )
+        metrics.log_scalar(
+            "encoder_drop_rate", encoder_drop_rate / step_indicator, ntokens, round=2, priority=1000
+        )
+        metrics.log_scalar(
+            "decoder_drop_rate", decoder_drop_rate / step_indicator, ntokens, round=2, priority=1000
         )
         metrics.log_scalar(
             "nll_loss", nll_loss_sum / ntokens / math.log(2), ntokens, round=3
