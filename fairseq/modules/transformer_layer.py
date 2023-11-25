@@ -355,7 +355,8 @@ class TransformerEncoderMoELayerBase(nn.Module):
                                                         in_logits=None,
                                                         now_training_process=None,
                                                         gating_function=None,
-                                                        moe_type=self.cfg.moe_type)
+                                                        moe_type=self.cfg.moe_type,
+                                                        no_eval_drop=False)
         
         expert_output, non_zero_ratio = self.experts(reshaped_input, combine_weights, top_idx)
 
@@ -921,7 +922,8 @@ class TransformerDecoderMoELayerBase(nn.Module):
                                                         in_logits=None,
                                                         now_training_process=None,
                                                         gating_function=None,
-                                                        moe_type=self.cfg.moe_type)
+                                                        moe_type=self.cfg.moe_type,
+                                                        no_eval_drop=False)
         
         expert_output, non_zero_ratio = self.experts(reshaped_input, combine_weights, top_idx)
 

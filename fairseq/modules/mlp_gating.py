@@ -319,7 +319,7 @@ def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: 
 	combine_weights = tensor_all_gates
 	dispatch_mask = None  # no used actually
 
-	top1_drop_rate = 100 - ((mask1 * tensor_all_mask).sum() * 100 / token_num)
+	top1_drop_rate = (token_num - (mask1 * tensor_all_mask).sum()) * 100 / token_num
 
 	gate_info = {
 		"top1_p": top1_p,
@@ -598,7 +598,7 @@ def main_thresholdGating(logits: Tensor, capacity_factor: float, min_capacity: i
 	# dispatch_mask = combine_weights.bool() # no used actually
 	dispatch_mask = None  # no used actually
 
-	top1_drop_rate = 100 - ((mask1 * tensor_all_mask).sum() * 100 / token_num)
+	top1_drop_rate = (token_num - (mask1 * tensor_all_mask).sum()) * 100 / token_num
 	
 	gate_info = {
 		"top1_p": top1_p,
@@ -683,7 +683,8 @@ class TopKGate(torch.nn.Module):
 				in_logits: torch.Tensor = None,
 				now_training_process: float = None,
 				gating_function=None,
-				moe_type: str = 'threshold') -> Tuple[Tensor, Tensor, Tensor]:
+				moe_type: str = 'threshold',
+				no_eval_drop: bool = False) -> Tuple[Tensor, Tensor, Tensor]:
 
 		assert self.training == input.requires_grad, "Traning Flag Wrong in Router, YYH!"
 
@@ -703,6 +704,11 @@ class TopKGate(torch.nn.Module):
 			logits = logits.reshape(logits.shape[0], -1, self.view_num)
 			logits = torch.max(logits, dim=-1)[0].contiguous()
 
+		if no_eval_drop and (not self.training):
+			this_drop_tokens = False
+		else:
+			this_drop_tokens = self.drop_tokens
+
 		if moe_type == 'base':
 			gate_output = baselayer_gating(logits, self.capacity_factor if self.training else self.eval_capacity_factor,
 									 self.min_capacity, self.k, self.training)
@@ -714,7 +720,7 @@ class TopKGate(torch.nn.Module):
 			# 						 placeholder_expert=self.placeholder_expert)
 
 			gate_output = topkgating(logits, self.capacity_factor if self.training else self.eval_capacity_factor,
-									 self.min_capacity, self.k, drop_tokens=self.drop_tokens)
+									 self.min_capacity, self.k, drop_tokens=this_drop_tokens)
 
 		elif moe_type == 'threshold':
 			if self.placeholder_expert:
