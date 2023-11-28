@@ -331,6 +331,20 @@ def transformer_moe_ep64_s2_nod_top2_cf2_ecf2(args):
     base_architecture(args)
 
 
+@register_model_architecture("transformer", "transformer_moe_ep128_s4_nod_top4_cf4_ecf4")
+def transformer_moe_ep128_s4_nod_top4_cf4_ecf4(args):
+    args.moe_type = getattr(args, "moe_type", "topk")
+    args.expert_interval = getattr(args, "expert_interval", 2)
+    args.num_experts = getattr(args, "num_experts", 128)
+    args.ffn_split_ratio = getattr(args, "ffn_split_ratio", 4)
+    args.moe_k = getattr(args, "moe_k", 4)
+    args.capacity_factor = getattr(args, "capacity_factor", 4)
+    args.eval_capacity_factor = getattr(args, "eval_capacity_factor", 4)
+    args.threshold = getattr(args, "threshold", 0.90)
+    args.no_decoder_moe = getattr(args, "no_decoder_moe", True)
+    base_architecture(args)
+
+
 @register_model_architecture("transformer", "transformer_moe_ep8_top2_cf2_ecf2")
 def transformer_moe_ep8_top2_cf2_ecf2(args):
     args.moe_type = getattr(args, "moe_type", "topk")
