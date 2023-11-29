@@ -272,18 +272,20 @@ def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: 
 	logits_w_noise = logits + gumbel_rsample(logits.shape, device=logits.device)
 	# Replace top-expert with min value
 	logits_except1 = logits_w_noise.masked_fill(mask1.bool(), float("-inf"))
+	gates_expcept1 = F.softmax(logits_except1, dim=1)
 
 	if in_k > 1:
-		_, gates_indices = torch.topk(logits_except1, dim=-1, k=in_k-1, largest=True, sorted=True)
+		gates_sorted, gates_indices = torch.topk(gates_expcept1, dim=-1, k=in_k-1, largest=True, sorted=True)
 		whole_chosen_indices = torch.cat([indices1_s.unsqueeze(-1), gates_indices], dim=-1) # (token num, in_k)
+		whole_chosen_gates = torch.cat([top1_p.unsqueeze(-1), gates_sorted], dim=-1) # (token num, in_k)
 	else:
 		whole_chosen_indices = indices1_s.unsqueeze(-1)
-
+		whole_chosen_gates = top1_p.unsqueeze(-1)
 
 	scatter_importance = torch.arange(in_k, 0, -1, device=whole_chosen_indices.device).expand(
 		whole_chosen_indices.shape)  # (token num, in_k)
 	tensor_all_mask = torch.zeros((whole_chosen_indices.shape[0], num_experts), device=whole_chosen_indices.device,
-								  dtype=whole_chosen_indices.dtype).scatter_(1, whole_chosen_indices,
+								  dtype=scatter_importance.dtype).scatter_(1, whole_chosen_indices,
 																			 scatter_importance) # (token num, expert_num)
 	token_num, expert_num = tensor_all_mask.shape
 
