@@ -325,6 +325,7 @@ def topkgating(logits: Tensor, capacity_factor: float, min_capacity: int, in_k: 
 
 	gate_info = {
 		"top1_p": top1_p,
+		"top1_p_mean": top1_p.mean().item(),
 		"chosen_num": avg_valid_chosen_num,
 		"token_not_full_ratio": token_not_full_ratio,
 		"expert_not_full_ratio": expert_not_full_ratio,
@@ -605,6 +606,7 @@ def main_thresholdGating(logits: Tensor, capacity_factor: float, min_capacity: i
 	
 	gate_info = {
 		"top1_p": top1_p,
+		"top1_p_mean": top1_p.mean().item(),
 		"chosen_num": avg_valid_chosen_num,
 		"token_not_full_ratio": token_not_full_ratio,
 		"expert_not_full_ratio": expert_not_full_ratio,
