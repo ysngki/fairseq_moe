@@ -691,6 +691,8 @@ class TopKGate(torch.nn.Module):
 				moe_type: str = 'threshold',
 				no_eval_drop: bool = False) -> Tuple[Tensor, Tensor, Tensor]:
 
+		no_eval_drop = True
+		
 		assert self.training == input.requires_grad, "Traning Flag Wrong in Router, YYH!"
 
 		if in_logits is None:
